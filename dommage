@@ -1,0 +1,122 @@
+#!/bin/bash
+#
+# Copyright (c) 2017, Richard Mortier <mort@cantab.net>
+# @license LICENSE.txt
+#
+# Dockerise Mirage CLI
+
+set -ex
+
+usage() {
+  echo "$0 usage:" \
+    && grep "[[:space:]].)\ #" $0 \
+      | sed 's/#//' \
+      | sed -r 's/([a-z])\)/-\1/';
+  exit 0;
+}
+
+declare -r ME="$(basename $0)"
+err() {
+  echo "[$(date +'%Y-%m-%dT%H:%M:%S%z') $ME]: $@" >&2
+}
+die() {
+  rc=$1
+  shift
+  err $@
+  exit $rc
+}
+
+declare -r CONTAINER=.mirage.container
+declare -r IMAGE=.mirage.image
+
+declare EXEC="
+  docker exec -ti $(cat $CONTAINER 2>/dev/null) opam config exec --"
+declare MIRAGE="$EXEC mirage"
+
+init () {
+  err INIT
+  destroy
+  if [[ -z "$1" ]]; then
+    echo mor1/mirage >| $IMAGE
+  else
+    echo "$1" >| $IMAGE
+  fi
+
+  echo $(docker create \
+                --tty --interactive \
+                --volume $(pwd -P):/cwd \
+                --entrypoint /bin/sh \
+         $(cat $IMAGE)
+    ) >| $CONTAINER
+  docker start $(cat $CONTAINER)
+
+  declare EXEC="
+    docker exec -ti $(cat $CONTAINER 2>/dev/null) opam config exec --"
+  declare MIRAGE="$EXEC mirage"
+
+  $EXEC opam update -yu
+}
+
+publish () {
+  err PUBLISH
+  if [ ! -s $CONTAINER ]; then
+    die 1 "no running container"
+  fi
+
+  docker commit $(cat $CONTAINER) "$1"
+  docker push "$1"
+  echo "$1" >| $IMAGE
+}
+
+destroy() {
+  err DESTROY
+  if [ -s $CONTAINER ]; then
+    if [[ -n $(cat $CONTAINER) ]]; then
+      docker stop -t 2 $(cat $CONTAINER)
+      docker rm $(cat $CONTAINER)
+    fi
+  fi
+  rm -f $CONTAINER
+}
+
+configure () {
+  err CONFIGURE
+  if [ ! -s $CONTAINER ]; then
+    init
+  fi
+
+  $MIRAGE configure "$@"
+  $EXEC make depends
+}
+
+clean () {
+  err clean
+  if [ ! -s $CONTAINER ]; then
+    init
+  fi
+
+  $MIRAGE clean "$@"
+}
+
+build () {
+  err build
+  if [ ! -s $CONTAINER ]; then
+    init
+  fi
+
+  $MIRAGE build "$@"
+}
+
+command=$1
+shift
+case "$command" in
+  init) init "$@" ;;
+  publish) publish "$@" ;;
+  destroy) destroy "$@" ;;
+
+  configure) configure "$@" ;;
+  build) build "$@" ;;
+  clean) clean "$@" ;;
+
+  *) usage ;;
+esac
