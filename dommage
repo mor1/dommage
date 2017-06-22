@@ -5,13 +5,11 @@
 #
 # Dockerise Mirage CLI
 
-set -ex
+set -e
 
 usage() {
-  echo "$0 usage:" \
-    && grep "[[:space:]].)\ #" $0 \
-      | sed 's/#//' \
-      | sed -r 's/([a-z])\)/-\1/';
+  echo "$0 usage:"
+  sed -nE "s/[[:space:]]+([[:alpha:]]+)) .* # ([[:print:]]*) .*$/  \1: \2/p" $0
   exit 0;
 }
 
@@ -108,15 +106,19 @@ build () {
 }
 
 command=$1
+if [[ -z "$command" ]]; then
+  usage
+fi
 shift
-case "$command" in
-  init) init "$@" ;;
-  publish) publish "$@" ;;
-  destroy) destroy "$@" ;;
 
-  configure) configure "$@" ;;
-  build) build "$@" ;;
-  clean) clean "$@" ;;
+case "$command" in
+  init) init "$@" ;; # initialise, $1 indicates base image
+  publish) publish "$@" ;; # commit image and publish at $1
+  destroy) destroy "$@" ;; # destroy any running containers and clean up
+
+  configure) configure "$@" ;; # mirage configure $@ && make depends
+  build) build "$@" ;; # mirage build $@
+  clean) clean "$@" ;; # mirage clean
 
   *) usage ;;
 esac
