@@ -5,8 +5,10 @@
 #
 # Dockerise Mirage CLI
 
-set -exv
-PS4='$LINENO: '
+set -e
+## debug
+# set -xv
+# PS4='$LINENO: '
 
 usage() {
   echo "$0 usage:"
