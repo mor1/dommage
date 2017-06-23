@@ -7,8 +7,8 @@
 
 set -e
 ## debug
-# set -xv
-# PS4='$LINENO: '
+set -xv
+PS4='$LINENO: '
 
 # exit unless:
 [[ "$DEPLOY" = "false" ]] && exit 1               # we're deploying
@@ -17,15 +17,15 @@ set -e
 [[ -z "$XSECRET_default_0" ]] && exit 1           # have secrets
 [[ -z "$XENIMG" ]] && exit 1                      # building for Xen
 
-declare -r XENIMG="mir-${XENIMG:-$TRAVIS_REPO_SLUG#mirage/mirage-}.xen"
-declare -r MIRDIR="${MIRDIR:-src}"
-declare -r DEPLOYD="${TRAVIS_REPO_SLUG#*/}-deployment"
+declare -r XENIMG=${XENIMG:-$TRAVIS_REPO_SLUG#mirage/mirage-}.xen
+declare -r MIRDIR=${MIRDIR:-src}
+declare -r DEPLOYD=${TRAVIS_REPO_SLUG#*/}-deployment
 
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
 
 cat > ~/.ssh/config <<EOF
-Host mir-deploy github.com
+Host mirage-deploy github.com
   Hostname github.com
   StrictHostKeyChecking no
   CheckHostIP no
@@ -39,7 +39,7 @@ opam install travis-senv
 travis-senv decrypt > ~/.ssh/id_dsa
 chmod 600 ~/.ssh/id_dsa
 
-git clone git@mir-deploy:${TRAVIS_REPO_SLUG}-deployment
+git clone git@mirage-deploy:${TRAVIS_REPO_SLUG}-deployment
 mkdir -p $DEPLOYD/xen/$TRAVIS_COMMIT
 cp $MIRDIR/$XENIMG $MIRDIR/config.ml $DEPLOYD/xen/$TRAVIS_COMMIT
 rm -f $DEPLOYD/xen/$TRAVIS_COMMIT/${XENIMG}.bz2
