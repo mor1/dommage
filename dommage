@@ -7,8 +7,10 @@
 
 set -e
 ## debug
-# set -xv
-# PS4='$LINENO: '
+if [[ "$DOMMAGE_DEBUG" = "true" ]]; then
+  set -xv
+  PS4='$LINENO: '
+fi
 
 usage() {
   echo "$0 usage:"
