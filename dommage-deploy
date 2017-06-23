@@ -35,7 +35,7 @@ git config --global user.email 'travis@mirage.io'
 git config --global user.name 'Travis the Build Bot'
 git config --global push.default simple
 
-opam install travis-senv
+opam install -y travis-senv
 travis-senv decrypt > ~/.ssh/id_dsa
 chmod 600 ~/.ssh/id_dsa
 
