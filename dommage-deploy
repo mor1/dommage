@@ -36,7 +36,7 @@ git config --global user.name 'Travis the Build Bot'
 git config --global push.default simple
 
 opam install -y travis-senv
-travis-senv decrypt > ~/.ssh/id_dsa
+opam config exec -- travis-senv decrypt > ~/.ssh/id_dsa
 chmod 600 ~/.ssh/id_dsa
 
 git clone git@mirage-deploy:${TRAVIS_REPO_SLUG}-deployment
