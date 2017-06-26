@@ -13,6 +13,8 @@ if [[ "$DOMMAGE_DEBUG" = "true" ]]; then
 fi
 
 ## not deploying is no error, but neither is deploying
+[[ -z "$DEPLOY" ]] && exit 0
+[[ "$DEPLOY" = "0" ]] && exit 0 || true
 [[ "$DEPLOY" = "false" ]] && exit 0 || true
 
 # exit unless:
