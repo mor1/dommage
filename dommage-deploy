@@ -3,7 +3,7 @@
 # Copyright (c) 2017, Richard Mortier <mort@cantab.net>
 # @license LICENSE.txt
 #
-# Deploy Mirage Xen build outputs
+# Deploy Mirage Xen Travis build outputs
 
 set -e
 ## debug
@@ -22,6 +22,9 @@ fi
 declare -r XENIMG=${XENIMG:-$TRAVIS_REPO_SLUG#mirage/mirage-}.xen
 declare -r MIRDIR=${MIRDIR:-src}
 declare -r DEPLOYD=${TRAVIS_REPO_SLUG#*/}-deployment
+
+sudo add-apt-repository -y ppa:avsm/ppa
+sudo apt-get install -y opam && opam init -y
 
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
