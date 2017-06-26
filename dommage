@@ -8,7 +8,7 @@
 set -e
 ## debug
 if [[ "$DOMMAGE_DEBUG" = "true" ]]; then
-  set -xv
+  set -x
   PS4='$LINENO: '
 fi
 
@@ -33,7 +33,7 @@ declare -r CONTAINER=.mirage.container
 declare -r IMAGE=.mirage.image
 
 _exec() {
-  docker exec --tty --interactive --user $(id -u):$(id -g) \
+  docker exec --tty --interactive \
          $(cat "$CONTAINER" 2>/dev/null) \
          opam config exec -- "$@"
 }
@@ -41,7 +41,8 @@ _mirage() {
   _exec mirage "$@"
 }
 
-DOCKER_FLAGS+=" --volume $(pwd -P):/cwd --entrypoint /bin/sh"
+_DFLAGS=$DOCKER_FLAGS
+DOCKER_FLAGS="--volume $(pwd -P):/cwd $_DFLAGS --entrypoint /bin/sh"
 
 init () {
   destroy
