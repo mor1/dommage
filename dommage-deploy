@@ -17,9 +17,9 @@ fi
 [[ "$DEPLOY" = "0" ]] && exit 0 || true
 [[ "$DEPLOY" = "false" ]] && exit 0 || true
 
-# exit unless:
+## exit unless:
 [[ "$TRAVIS_PULL_REQUEST" != "false" ]] && exit 1 # not a PR
-[[ "$TRAVIS_BRANCH" != "master" ]] && exit 1      # master branch
+[[ "$TRAVIS_BRANCH" != "master" ]] && exit 1      # on master branch
 [[ -z "$XSECRET_default_0" ]] && exit 1           # have secrets
 [[ -z "$XENIMG" ]] && exit 1                      # building for Xen
 
@@ -27,9 +27,14 @@ declare -r XENIMG=${XENIMG:-$TRAVIS_REPO_SLUG#mirage/mirage-}.xen
 declare -r MIRDIR=${MIRDIR:-src}
 declare -r DEPLOYD=${TRAVIS_REPO_SLUG#*/}-deployment
 
+## setup SSH and git
+
+# TODO: plumb the XSECRET_* env vars through to a container, and then we needn't
+# install OCaml or travis-senv on the host
 sudo add-apt-repository -y ppa:avsm/ppa
 sudo apt-get -qq update
 sudo apt-get install -y opam && opam init -y
+opam install -y travis-senv
 
 mkdir -p ~/.ssh
 chmod 700 ~/.ssh
@@ -44,11 +49,10 @@ EOF
 git config --global user.email 'travis@mirage.io'
 git config --global user.name 'Travis the Build Bot'
 git config --global push.default simple
-
-opam install -y travis-senv
 opam config exec -- travis-senv decrypt > ~/.ssh/id_dsa
 chmod 600 ~/.ssh/id_dsa
 
+## clone the deployment repo and build new site
 git clone git@mirage-deploy:${TRAVIS_REPO_SLUG}-deployment
 mkdir -p $DEPLOYD/xen/$TRAVIS_COMMIT
 cp $MIRDIR/$XENIMG $MIRDIR/config.ml $DEPLOYD/xen/$TRAVIS_COMMIT
@@ -56,6 +60,7 @@ rm -f $DEPLOYD/xen/$TRAVIS_COMMIT/${XENIMG}.bz2
 bzip2 -9 $DEPLOYD/xen/$TRAVIS_COMMIT/$XENIMG
 echo $TRAVIS_COMMIT > $DEPLOYD/xen/latest
 
+## commit new site and push
 cd $DEPLOYD
 git add xen/$TRAVIS_COMMIT xen/latest
 git commit -m "adding $TRAVIS_COMMIT for $MIRAGE_BACKEND"
