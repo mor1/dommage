@@ -15,6 +15,7 @@ fi
 usage() {
   echo "$0 usage:"
   sed -nE "s/[[:space:]]+([[:alpha:]]+)) .* # ([[:print:]]*) .*$/  \1: \2/p" $0
+  echo "--dommage-chdir=[dir] changes container dir before executing command"
   exit 0;
 }
 
@@ -25,7 +26,7 @@ err() {
 die() {
   rc=$1
   shift
-  err $@
+  err "$@"
   exit $rc
 }
 
@@ -33,12 +34,16 @@ declare -r CONTAINER=.mirage.container
 declare -r IMAGE=.mirage.image
 
 _exec() {
+  local chdir=$1
+  shift
   docker exec --tty --interactive \
          $(cat "$CONTAINER" 2>/dev/null) \
-         opam config exec -- "$@"
+         bash -c "cd $chdir && opam config exec -- $*"
 }
 _mirage() {
-  _exec mirage "$@"
+  local chdir=$1
+  shift
+  _exec $chdir mirage "$@"
 }
 
 _DFLAGS=$DOCKER_FLAGS
@@ -56,7 +61,7 @@ init () {
     ) >| $CONTAINER
   docker start $(cat "$CONTAINER")
 
-  _exec opam update -yu
+  _exec . opam update -yu
 }
 
 publish () {
@@ -79,34 +84,86 @@ destroy() {
   rm -f "$CONTAINER"
 }
 
+run () {
+  local chdir=$1
+  shift
+  _exec "$chdir" "$@"
+}
+
 configure () {
+  local chdir=$1
+  shift
+
   if [ ! -s "$CONTAINER" ]; then
     init $(cat "$IMAGE")
   fi
 
-  _mirage configure "$@"
-  _exec make depends
+  _mirage "$chdir" configure "$@"
+  _exec "$chdir" make depends
 }
 
 clean () {
+  local chdir=$1
+  shift
+
   if [ ! -s "$CONTAINER" ]; then
     init $(cat "$IMAGE")
   fi
 
-  _mirage clean "$@"
+  _mirage "$chdir" clean "$@"
 }
 
 build () {
+  local chdir=$1
+  shift
+
   if [ ! -s "$CONTAINER" ]; then
     init $(cat "$IMAGE")
   fi
 
-  _mirage build "$@"
+  _mirage "$chdir" build "$@"
 }
 
-run () {
-  _exec "$@"
-}
+ARGS=
+chdir=.
+while [[ $# > 0 ]]; do
+  OPTIND=1
+  while getopts -- "-:" optchar; do
+      case "$optchar" in
+      -)
+        case "$OPTARG" in
+          dommage-chdir)
+            chdir="$2"
+            shift 2
+            break
+            ;;
+          dommage-chdir=*)
+            chdir=${OPTARG#*=}
+            shift
+            break
+            ;;
+          *)
+            ARGS="$ARGS $1"
+            shift
+            break
+            ;;
+        esac
+        break
+        ;;
+      *)
+        ARGS="$ARGS $1"
+        shift
+        break
+        ;;
+    esac
+    done
+  while [[ $# > 0 && ${1:0:2} != "--" ]]; do
+    ARGS="$ARGS $1"
+    shift
+  done
+done
+
+set -- $ARGS
 
 command=$1
 if [[ -z "$command" ]]; then
@@ -118,11 +175,11 @@ case "$command" in
   init) init "$@" ;; # initialise, $1 indicates base image
   publish) publish "$@" ;; # commit image and publish at $1
   destroy) destroy "$@" ;; # destroy any running containers and clean up
-  run) run "$@" ;; # run command inside container
 
-  configure) configure "$@" ;; # mirage configure $@ && make depends
-  build) build "$@" ;; # mirage build $@
-  clean) clean "$@" ;; # mirage clean
+  run) run "$chdir" "$@" ;; # run command inside container
+  configure) configure "$chdir" "$@" ;; # mirage configure $@ && make depends
+  build) build "$chdir" "$@" ;; # mirage build $@
+  clean) clean "$chdir" "$@" ;; # mirage clean
 
   *) usage ;;
 esac
