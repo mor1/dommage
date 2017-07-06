@@ -12,16 +12,34 @@ if [[ "$DOMMAGE_DEBUG" = "true" ]]; then
   PS4='$LINENO: '
 fi
 
-## not deploying is no error, but neither is deploying
-[[ -z "$DEPLOY" ]] && exit 0
-[[ "$DEPLOY" = "0" ]] && exit 0 || true
-[[ "$DEPLOY" = "false" ]] && exit 0 || true
+## bail out unless the time is right...
+if [[ -z "$DEPLOY"  || "$DEPLOY" = "0" || "$DEPLOY" = "false" ]]; then
+  echo "deploy: deployment not requested"
+  exit 0
+fi
 
-## exit unless:
-[[ "$TRAVIS_PULL_REQUEST" != "false" ]] && exit 1 # not a PR
-[[ "$TRAVIS_BRANCH" != "master" ]] && exit 1      # on master branch
-[[ -z "$XSECRET_default_0" ]] && exit 1           # have secrets
-[[ -z "$XENIMG" ]] && exit 1                      # building for Xen
+if [[ "$TRAVIS_PULL_REQUEST" != "false"]]; then
+  echo "deploy: we don't deploy pull requests"
+  exit 0
+fi
+
+if [[ "$TRAVIS_BRANCH" != "master" ]]; then
+  echo "deploy: we don't deploy from branches other than master"
+  exit 0
+fi
+
+if [[ -z "$XSECRET_default_0" ]]; then
+  echo "deploy: we can't as we have no secrets"
+  exit 0
+fi
+
+if [[ -z "$XENIMG" ]]; then
+  echo "deploy: have no name for the Xen image"
+  exit 0
+fi
+
+## at this point: we are deploying, from a fully merged master, and we have the
+## secrets and metadata (Xen image name) to do so
 
 declare -r XENIMG=${XENIMG:-$TRAVIS_REPO_SLUG#mirage/mirage-}.xen
 declare -r MIRDIR=${MIRDIR:-src}
