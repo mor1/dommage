@@ -18,7 +18,7 @@ if [[ -z "$DEPLOY"  || "$DEPLOY" = "0" || "$DEPLOY" = "false" ]]; then
   exit 0
 fi
 
-if [[ "$TRAVIS_PULL_REQUEST" != "false"]]; then
+if [[ "$TRAVIS_PULL_REQUEST" != "false" ]]; then
   echo "deploy: we don't deploy pull requests"
   exit 0
 fi
