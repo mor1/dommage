@@ -64,10 +64,12 @@ _DFLAGS=$DOCKER_FLAGS
 DOCKER_FLAGS="--volume $(pwd -P):/cwd $_DFLAGS --entrypoint /bin/sh"
 
 init () {
-  if [[ -z "$1" ]]; then
-    echo mor1/mirage >| $IMAGE
-  else
-    echo "$1" >| $IMAGE
+  if [ ! -s "$IMAGE" ]; then
+    if [[ -z "$1" ]]; then
+      echo mor1/mirage >| $IMAGE
+    else
+      echo "$1" >| $IMAGE
+    fi
   fi
 
   echo $(docker create --tty --interactive $DOCKER_FLAGS $(cat "$IMAGE")
