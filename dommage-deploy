@@ -8,7 +8,7 @@
 set -e
 ## debug
 if [[ "$DOMMAGE_DEBUG" = "true" ]]; then
-  set -x
+  set -xv
   PS4='$LINENO: '
 fi
 
@@ -72,6 +72,8 @@ chmod 600 ~/.ssh/id_dsa
 
 ## clone the deployment repo and build new site
 git clone git@mirage-deploy:${TRAVIS_REPO_SLUG}-deployment
+
+# put the new unikernel in place
 mkdir -p $DEPLOYD/xen/$TRAVIS_COMMIT
 cp $MIRDIR/$XENIMG $MIRDIR/config.ml $DEPLOYD/xen/$TRAVIS_COMMIT
 rm -f $DEPLOYD/xen/$TRAVIS_COMMIT/${XENIMG}.bz2
