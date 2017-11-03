@@ -16,7 +16,7 @@ usage() {
   echo "$0 usage:"
   sed -nE "s/[[:space:]]+([[:alpha:]]+)) .* # ([[:print:]]*) .*$/  \1: \2/p" $0
   echo "--dommage-chdir=[dir] changes container dir before executing command"
-  exit 0;
+  exit 0
 }
 
 declare -r ME="$(basename $0)"
@@ -36,21 +36,34 @@ declare -r IMAGE=.mirage.image
 _exec() {
   local chdir=$1
   shift
+
+  if [ ! -s "$CONTAINER" ]; then
+    init
+  fi
+
   docker exec --tty --interactive \
          $(cat "$CONTAINER" 2>/dev/null) \
-         bash -c "cd $chdir && opam config exec -- $*"
+         bash -c "cd $chdir && $@"
 }
+
+_opam() {
+  local chdir=$1
+  shift
+
+  _exec "$chdir" "opam config exec -- $*"
+}
+
 _mirage() {
   local chdir=$1
   shift
-  _exec $chdir mirage "$@"
+
+  _opam "$chdir" mirage "$@"
 }
 
 _DFLAGS=$DOCKER_FLAGS
 DOCKER_FLAGS="--volume $(pwd -P):/cwd $_DFLAGS --entrypoint /bin/sh"
 
 init () {
-  destroy
   if [[ -z "$1" ]]; then
     echo mor1/mirage >| $IMAGE
   else
@@ -60,15 +73,9 @@ init () {
   echo $(docker create --tty --interactive $DOCKER_FLAGS $(cat "$IMAGE")
     ) >| $CONTAINER
   docker start $(cat "$CONTAINER")
-
-  _exec . opam update -yu
 }
 
 publish () {
-  if [ ! -s "$CONTAINER" ]; then
-    die 1 "no running container"
-  fi
-
   docker commit $(cat "$CONTAINER") "$1"
   docker push "$1"
   echo "$1" >| $IMAGE
@@ -84,31 +91,28 @@ destroy() {
   rm -f "$CONTAINER"
 }
 
+update() {
+  _exec ~opam/opam-repository "git pull origin master && opam update -yu"
+}
+
 run () {
   local chdir=$1
   shift
-  _exec "$chdir" "$@"
+
+  _opam "$chdir" "$@"
 }
 
 configure () {
   local chdir=$1
   shift
 
-  if [ ! -s "$CONTAINER" ]; then
-    init $(cat "$IMAGE")
-  fi
-
   _mirage "$chdir" configure "$@"
-  _exec "$chdir" make depends
+  _opam "$chdir" make depends
 }
 
 clean () {
   local chdir=$1
   shift
-
-  if [ ! -s "$CONTAINER" ]; then
-    init $(cat "$IMAGE")
-  fi
 
   _mirage "$chdir" clean "$@"
 }
@@ -116,10 +120,6 @@ clean () {
 build () {
   local chdir=$1
   shift
-
-  if [ ! -s "$CONTAINER" ]; then
-    init $(cat "$IMAGE")
-  fi
 
   _mirage "$chdir" build "$@"
 }
@@ -175,6 +175,7 @@ case "$command" in
   init) init "$@" ;; # initialise, $1 indicates base image
   publish) publish "$@" ;; # commit image and publish at $1
   destroy) destroy "$@" ;; # destroy any running containers and clean up
+  update) update "$@" ;; # update all opam packages to latest releases
 
   run) run "$chdir" "$@" ;; # run command inside container
   configure) configure "$chdir" "$@" ;; # mirage configure $@ && make depends
